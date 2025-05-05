@@ -12,7 +12,6 @@
 #define MAX_PRODUSE 100
 #define NUME_FISIER "produse_farmacie.txt"
 
-
 #define RESET "\033[0m"
 #define VERDE "\033[0;32m"
 #define ROSU "\033[0;31m"
@@ -23,6 +22,7 @@ typedef struct {
     char nume[50];
     int cantitate;
     int rezervate;
+    char data_expirare[11]; 
 } Produs;
 
 Produs produse[MAX_PRODUSE];
@@ -35,7 +35,7 @@ void incarca_produse() {
         return;
     }
 
-    while (fscanf(fisier, "%s %d %d", produse[numar_produse].nume, &produse[numar_produse].cantitate, &produse[numar_produse].rezervate) != EOF) {
+    while (fscanf(fisier, "%s %d %d %s", produse[numar_produse].nume, &produse[numar_produse].cantitate, &produse[numar_produse].rezervate, produse[numar_produse].data_expirare) != EOF) {
         numar_produse++;
     }
 
@@ -50,7 +50,7 @@ void salveaza_produse() {
     }
 
     for (int i = 0; i < numar_produse; i++) {
-        fprintf(fisier, "%s %d %d\n", produse[i].nume, produse[i].cantitate, produse[i].rezervate);
+        fprintf(fisier, "%s %d %d %s\n", produse[i].nume, produse[i].cantitate, produse[i].rezervate, produse[i].data_expirare);
     }
 
     fclose(fisier);
@@ -65,15 +65,16 @@ void afiseaza_meniu_principal() {
     printf("4. Cautare produs\n");
     printf("5. Rezervare produs\n");
     printf("6. Afisare produse rezervate\n");
-    printf("7. Iesire\n");
+    printf("7. Afisare produse expirate\n");
+    printf("8. Iesire\n");
 }
 
 void afiseaza_produse_disponibile() {
     CURATA_ECRAN();
     printf(GALBEN "=== Produse Disponibile ===\n" RESET);
     for (int i = 0; i < numar_produse; i++) {
-        printf("%d. " VERDE "%s" RESET " | Cantitate: %d | Rezervate: %d\n",
-               i + 1, produse[i].nume, produse[i].cantitate, produse[i].rezervate);
+        printf("%d. " VERDE "%s" RESET " | Cantitate: %d | Rezervate: %d | Expira la: %s\n",
+               i + 1, produse[i].nume, produse[i].cantitate, produse[i].rezervate, produse[i].data_expirare);
     }
     printf("\n0. Inapoi la meniul principal\n");
     printf("Apasa orice tasta + Enter pentru a continua...");
@@ -92,14 +93,23 @@ void adauga_produs() {
     printf("Introduceti " VERDE "numele produsului" RESET ": ");
     scanf("%s", nou_produs.nume);
 
+    for (int i = 0; i < numar_produse; i++) {
+        if (strcmp(produse[i].nume, nou_produs.nume) == 0) {
+            printf(ROSU "Produsul exista deja.\n" RESET);
+            return;
+        }
+    }
+
     printf("Introduceti " VERDE "cantitatea disponibila (numar pozitiv)" RESET ": ");
     while (scanf("%d", &nou_produs.cantitate) != 1 || nou_produs.cantitate < 0) {
         printf(ROSU "Valoare invalida. Introduceti o cantitate pozitiva: " RESET);
         while(getchar() != '\n');
     }
 
-    nou_produs.rezervate = 0;
+    printf("Introduceti " VERDE "data de expirare (DD/MM/YYYY)" RESET ": ");
+    scanf("%s", nou_produs.data_expirare);
 
+    nou_produs.rezervate = 0;
     produse[numar_produse++] = nou_produs;
     salveaza_produse();
     printf(VERDE "Produs adaugat cu succes.\n" RESET);
@@ -139,18 +149,22 @@ void cauta_produs() {
     printf("Introduceti " VERDE "numele produsului de cautat" RESET ": ");
     scanf("%s", nume);
 
+    printf("Se cauta produsul %s...\n", nume);
     int gasit = 0;
     for (int i = 0; i < numar_produse; i++) {
         if (strcmp(produse[i].nume, nume) == 0) {
-            printf("Produs: " VERDE "%s" RESET " | Cantitate: %d | Rezervate: %d\n", produse[i].nume, produse[i].cantitate, produse[i].rezervate);
+            printf(VERDE "Produs gasit!\n" RESET);
+            printf("Produs: " VERDE "%s" RESET " | Cantitate: %d | Rezervate: %d | Expira la: %s\n",
+                   produse[i].nume, produse[i].cantitate, produse[i].rezervate, produse[i].data_expirare);
             gasit = 1;
             break;
         }
     }
-
     if (!gasit) {
-        printf(ROSU "Produsul nu a fost gasit.\n" RESET);
+        printf(ROSU "Produsul NU a fost gasit.\n" RESET);
     }
+    printf("Apasa orice tasta + Enter pentru a continua...");
+    getchar(); getchar();
 }
 
 void rezervare_produs() {
@@ -199,8 +213,28 @@ void afisare_produse_rezervate() {
     if (!exista) {
         printf(ROSU "Nu exista produse rezervate.\n" RESET);
     }
+    printf("Apasa orice tasta + Enter pentru a continua...");
+    getchar(); getchar();
+}
 
-    printf("\n0. Inapoi la meniul principal\n");
+void afiseaza_produse_expirate() {
+    CURATA_ECRAN();
+    printf(GALBEN "=== Produse Expirate ===\n" RESET);
+    char data_curenta[11];
+    printf("Introdu data curenta (DD/MM/YYYY): ");
+    scanf("%s", data_curenta);
+
+    int exista = 0;
+    for (int i = 0; i < numar_produse; i++) {
+        if (strcmp(produse[i].data_expirare, data_curenta) < 0) {
+            printf("Produs: " VERDE "%s" RESET " | Expira la: %s\n", produse[i].nume, produse[i].data_expirare);
+            exista = 1;
+        }
+    }
+
+    if (!exista) {
+        printf(VERDE "Nu exista produse expirate.\n" RESET);
+    }
     printf("Apasa orice tasta + Enter pentru a continua...");
     getchar(); getchar();
 }
@@ -224,10 +258,11 @@ int main() {
             case 4: cauta_produs(); break;
             case 5: rezervare_produs(); break;
             case 6: afisare_produse_rezervate(); break;
-            case 7: printf(VERDE "Iesire din sistem.\n" RESET); break;
+            case 7: afiseaza_produse_expirate(); break;
+            case 8: printf(VERDE "Iesire din sistem.\n" RESET); break;
             default: printf(ROSU "Optiune invalida. Incercati din nou.\n" RESET);
         }
-    } while (optiune != 7);
+    } while (optiune != 8);
+
     return 0;
 }
-
